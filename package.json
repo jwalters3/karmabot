@@ -1,0 +1,23 @@
+{
+  "name": "karmabot",
+  "version": "1.0.0",
+  "description": "AWS lambda endpoint for Microsoft Teams Custom Bot webhook",
+  "main": "index.js",
+  "dependencies": {
+    "q": "^1.5.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jwalters3/karmabot.git"
+  },
+  "author": "Jeff Walters",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jwalters3/karmabot/issues"
+  },
+  "homepage": "https://github.com/jwalters3/karmabot#readme"
+}
