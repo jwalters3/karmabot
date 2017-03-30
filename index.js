@@ -13,7 +13,7 @@ exports.handler = (event, context, callback) => {
 	if (process.env.ignoreSecurity || validate(event)) {
 		
 		var body = JSON.parse(event.body),
-			actionsRe = /<at>([^<]+)<\/at> {0,2}([+-]{2})|list/g,
+			actionsRe = /<at>([^<]+)<\/at> {0,2}([+-]{2})|\blist\b/g,
 			actions = [], action,
 			resultPromisesArray = [];
 		
