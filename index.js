@@ -20,14 +20,14 @@ exports.handler = (event, context, callback) => {
 
 		while((action = actionsRe.exec(body.text)) !== null) {
 			if (action[0] === "list") {
-				actions.push({ type: 'list' });
+				actions.push({ type: 'list', teamid: body.channelData.teamsTeamId });
 			} else if (action[2] != null) {
 				let name = action[1];
 				let op = action[2]
 				let mention = body.entities.find(entity => { return entity.mentioned && entity.mentioned.name === name })
 				
 				if (mention) {
-					actions.push({ type: op === "++" ? 'increment' : 'decrement', userid: mention.mentioned.id, name: mention.mentioned.name });
+					actions.push({ type: op === "++" ? 'increment' : 'decrement', userid: mention.mentioned.id, name: mention.mentioned.name, teamid: body.channelData.teamsTeamId });
 				}
 			}
 		}
@@ -42,7 +42,7 @@ exports.handler = (event, context, callback) => {
 		actions.forEach(action => { 
 			switch (action.type) {
 				case "list":
-					resultPromisesArray.push(getScoreList());
+					resultPromisesArray.push(getScoreList(action));
 					break;
 				case "increment":
 					resultPromisesArray.push(increment(action));
@@ -71,19 +71,38 @@ exports.handler = (event, context, callback) => {
 
 };
 
-function getScoreList() {
+function getScoreList(action) {
 	let params = {
-		TableName: 'KarmaBotUsers',
-		Limit: 50
+		TableName: 'KarmaBot',
+        KeyConditionExpression: "#t = :tid",
+        ExpressionAttributeNames:{
+            "#t": "teamid"
+        },
+        ExpressionAttributeValues: {
+            ":tid":action.teamid
+        }
 	}
 
-	return Q.ninvoke(dynamo, "scan", params)
+    //console.log("scan params:",params)
+
+	return Q.ninvoke(dynamo, "query", params)
 		.then(data => {
 			//console.log("scan data:",data)
-			let res = data.Items.reduce((acc, user) => {
-				return  acc += "<li>" + user.name + ": " + user.score + "</li>";
-			}, '');
-			if (res === '') { res = "No one has karma :(" }
+            let res = '';
+
+            if (data.Items.length) {
+                res += "<ol>";
+
+                // sorting by score
+                data.Items.sort((a, b) => b.score - a.score);
+              
+                res += data.Items.reduce((acc, user) => {
+                    return  acc += "<li>" + user.name + ": " + user.score + "</li>";
+                }, '');
+
+                res += "</ol>";
+
+            } else { res = "No one has karma :(" }
 			//console.log("score list result:", res);
 			return res;
 		}).fail(error => {
@@ -93,8 +112,8 @@ function getScoreList() {
 
 function increment(action) {
 	let params = {
-		TableName: 'KarmaBotUsers',
-		Key: { "userid": action.userid }
+		TableName: 'KarmaBot',
+        Key: { "userid": action.userid, "teamid": action.teamid }
 	};
 
 	return Q.ninvoke(dynamo, "getItem", params)
@@ -102,8 +121,8 @@ function increment(action) {
 			//console.log("Getting user for inc:", data);
 			if (data.Item) {
 				let params = {
-					TableName: 'KarmaBotUsers',
-					Key: { "userid": action.userid },
+					TableName: 'KarmaBot',
+					Key: { "userid": data.Item.userid, "teamid": data.Item.teamid },
 					ExpressionAttributeNames: { "#S": "score", "#LS": "lastscore" },
 					ExpressionAttributeValues: { ":s": action.type === "increment" ? data.Item.score + 1 : data.Item.score - 1 , ":ls": Date.now() },
 					ReturnValues: "ALL_NEW",
@@ -115,23 +134,25 @@ function increment(action) {
 				return Q.ninvoke(dynamo, "updateItem", params)
 					.then(data => {
 						//console.log("after update", data);
-						return "<at>" + action.name + "</at> has " + data.Attributes.score + " karma.;"
+						return "<at>" + data.Attributes.name + "</at> has " + data.Attributes.score + " karma."
 					});
 			} else {
 				let score = action.type === "increment" ? 1 : -1;
+                let friendlyName = action.name.split(', ').reverse().join(' ');
 				let params = {
-					TableName: 'KarmaBotUsers',
+					TableName: 'KarmaBot',
 					Item: {
 						"userid": action.userid,
-						"name": action.name,
+						"name": friendlyName,
 						"score": score,
-						"lastscore": Date.now()
+						"lastscore": Date.now(),
+                        "teamid": action.teamid
 					}
 				};
 				return Q.ninvoke(dynamo, "putItem", params)
 					.then(data => {
 						//console.log("after put", data);
-						return "<at>" + action.name + "</at> has " + score + " karma.;"
+						return "<at>" + data.Attributes.name + "</at> has " + data.Attributes.score + " karma."
 					});
 			}
 		}).fail(error => {
