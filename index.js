@@ -151,8 +151,8 @@ function increment(action) {
 				};
 				return Q.ninvoke(dynamo, "putItem", params)
 					.then(data => {
-						//console.log("after put", data);
-						return "<at>" + data.Attributes.name + "</at> has " + data.Attributes.score + " karma."
+						console.log("after put", data);
+						return "<at>" + friendlyName + "</at> has " + score + " karma."
 					});
 			}
 		}).fail(error => {
