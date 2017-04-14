@@ -13,23 +13,25 @@ exports.handler = (event, context, callback) => {
 	if (process.env.ignoreSecurity || validate(event)) {
 		
 		var body = JSON.parse(event.body),
-			actionsRe = /<at>([^<]+)<\/at> {0,2}([+-]{2})|\blist\b/g,
+			actionsRe = /<at>([^<]+)<\/at> {0,2}([+-]{2})|\blist\b|\b!(:?un)?flip\b/g,
 			actions = [], action,
 			resultPromisesArray = [];
 		
 
 		while((action = actionsRe.exec(body.text)) !== null) {
-			if (action[0] === "list") {
-				actions.push({ type: 'list', teamid: body.channelData.teamsTeamId });
-			} else if (action[2] != null) {
+            let action = { type: action, teamid: body.channelData.teamsTeamId, caller: body.from };
+
+			if (action[2] != null) {
 				let name = action[1];
 				let op = action[2]
 				let mention = body.entities.find(entity => { return entity.mentioned && entity.mentioned.name === name })
 				
 				if (mention) {
+                    action.type 
 					actions.push({ type: op === "++" ? 'increment' : 'decrement', userid: mention.mentioned.id, name: mention.mentioned.name, teamid: body.channelData.teamsTeamId });
 				}
 			}
+            actions.push(action);
 		}
 
 		//console.log("Submitted actions:", actions);
@@ -40,9 +42,16 @@ exports.handler = (event, context, callback) => {
 		}
 
 		actions.forEach(action => { 
+            logAction(action);
 			switch (action.type) {
 				case "list":
 					resultPromisesArray.push(getScoreList(action));
+					break;
+				case "flip":
+					resultPromisesArray.push(getEmoticon(action));
+					break;
+				case "unflip":
+					resultPromisesArray.push(getEmoticon(action));
 					break;
 				case "increment":
 					resultPromisesArray.push(increment(action));
@@ -70,6 +79,21 @@ exports.handler = (event, context, callback) => {
 	}
 
 };
+
+function getEmoticon(action) {
+    let emoticon = '';
+
+    switch(action.type) {
+        case flip:
+            emoticon = '(╯°Д°）╯︵ ┻━┻';
+            break;
+        case unflip:
+            emoticon = '┬──┬ ノ( ゜-゜ノ)';
+            break;
+    }
+
+    return Q(emoticon);
+}
 
 function getScoreList(action) {
 	let params = {
