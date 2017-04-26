@@ -189,7 +189,7 @@ function logAction(action) {
     let params = {
         TableName: 'KarmaBotActions',
         Item: {
-            'userid': action.caller,
+            'userid': action.caller.id,
             'actiontime': Date.now(),
             'action': JSON.stringify(action)
         }
