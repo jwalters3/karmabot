@@ -13,22 +13,23 @@ exports.handler = (event, context, callback) => {
 	if (process.env.ignoreSecurity || validate(event)) {
 		
 		var body = JSON.parse(event.body),
-			actionsRe = /<at>([^<]+)<\/at> {0,2}([+-]{2})|\blist\b|\b!(:?un)?flip\b/g,
-			actions = [], action,
+			actionsRe = /<at>([^<]+)<\/at> {0,2}([+-]{2})|\blist\b|!(:?un)?flip\b/g,
+			actions = [], action, reResult,
 			resultPromisesArray = [];
 		
 
-		while((action = actionsRe.exec(body.text)) !== null) {
-            let action = { type: action, teamid: body.channelData.teamsTeamId, caller: body.from };
+		while((reResult = actionsRe.exec(body.text)) !== null) {
+            let action = { type: reResult[0], teamid: body.channelData.teamsTeamId, caller: body.from };
 
-			if (action[2] != null) {
-				let name = action[1];
-				let op = action[2]
-				let mention = body.entities.find(entity => { return entity.mentioned && entity.mentioned.name === name })
+			if (reResult[2] != null) {
+				let name = reResult[1];
+				let op = reResult[2];
+				let mention = body.entities.find(entity => { return entity.mentioned && entity.mentioned.name === name });
 				
 				if (mention) {
-                    action.type 
-					actions.push({ type: op === "++" ? 'increment' : 'decrement', userid: mention.mentioned.id, name: mention.mentioned.name, teamid: body.channelData.teamsTeamId });
+                    action.type = op || action.type;
+                    action.userid = mention.mentioned.id;
+                    action.name = mention.mentioned.name;
 				}
 			}
             actions.push(action);
@@ -42,21 +43,21 @@ exports.handler = (event, context, callback) => {
 		}
 
 		actions.forEach(action => { 
-            logAction(action);
+            logAction(action)
 			switch (action.type) {
 				case "list":
 					resultPromisesArray.push(getScoreList(action));
 					break;
-				case "flip":
+				case "!flip":
 					resultPromisesArray.push(getEmoticon(action));
 					break;
-				case "unflip":
+				case "!unflip":
 					resultPromisesArray.push(getEmoticon(action));
 					break;
-				case "increment":
+				case "++":
 					resultPromisesArray.push(increment(action));
 					break;
-				case "decrement": 
+				case "--": 
 					resultPromisesArray.push(increment(action));
 			}
 		}, this);
@@ -84,10 +85,10 @@ function getEmoticon(action) {
     let emoticon = '';
 
     switch(action.type) {
-        case flip:
+        case '!flip':
             emoticon = '(╯°Д°）╯︵ ┻━┻';
             break;
-        case unflip:
+        case '!unflip':
             emoticon = '┬──┬ ノ( ゜-゜ノ)';
             break;
     }
@@ -148,7 +149,7 @@ function increment(action) {
 					TableName: 'KarmaBot',
 					Key: { "userid": data.Item.userid, "teamid": data.Item.teamid },
 					ExpressionAttributeNames: { "#S": "score", "#LS": "lastscore" },
-					ExpressionAttributeValues: { ":s": action.type === "increment" ? data.Item.score + 1 : data.Item.score - 1 , ":ls": Date.now() },
+					ExpressionAttributeValues: { ":s": action.type === "++" ? data.Item.score + 1 : data.Item.score - 1 , ":ls": Date.now() },
 					ReturnValues: "ALL_NEW",
 					UpdateExpression: "SET #S = :s, #LS = :ls"
 				}
@@ -161,7 +162,7 @@ function increment(action) {
 						return "<at>" + data.Attributes.name + "</at> has " + data.Attributes.score + " karma."
 					});
 			} else {
-				let score = action.type === "increment" ? 1 : -1;
+				let score = action.type === "++" ? 1 : -1;
                 let friendlyName = action.name.split(', ').reverse().join(' ');
 				let params = {
 					TableName: 'KarmaBot',
@@ -184,6 +185,17 @@ function increment(action) {
 		});
 }
 
+function logAction(action) {
+    let params = {
+        TableName: 'KarmaBotActions',
+        Item: {
+            'userid': action.caller,
+            'actiontime': Date.now(),
+            'action': JSON.stringify(action)
+        }
+    };
+    dynamo.putItem(params).send();
+}
 
 function sendHelp(context, callback) {
 	let response = ["You can use the following commands: ",
@@ -225,7 +237,7 @@ function stringToUtf8ByteArray(str) {
 		}
 	}
 	return out;
-};
+}
 
 function validate(request) {
 	let messageContent = request.body,
@@ -270,4 +282,3 @@ function validate(request) {
 	console.log('AuthHeaderValueMismatch', "Expected:'" + hash + "' Provided:'" + signature + "'");
 	return false;
 }
-
