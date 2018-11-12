@@ -1,9 +1,10 @@
 {
   "name": "karmabot",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AWS lambda endpoint for Microsoft Teams Custom Bot webhook",
   "main": "index.js",
   "dependencies": {
+    "html-entities": "^1.2.1",
     "q": "^1.5.0"
   },
   "devDependencies": {},

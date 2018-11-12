@@ -5,20 +5,23 @@ console.log('Loading function');
 const doc = require('dynamodb-doc');
 const crypto = require('crypto');
 const Q = require('q');
-const dynamo = new doc.DynamoDB();
+const Entities = require('html-entities').XmlEntities;
 
+const entities = new Entities();
+const dynamo = new doc.DynamoDB();
 
 exports.handler = (event, context, callback) => {
 	//console.log('Received event:', JSON.stringify(event, null, 2));
 	if (process.env.ignoreSecurity || validate(event)) {
 		
 		var body = JSON.parse(event.body),
+			bodyText = entities.decode(body.text),
 			actionsRe = /<at>([^<]+)<\/at> {0,2}([+-]{2})|\blist\b|!(:?un)?flip\b/g,
 			actions = [], action, reResult,
 			resultPromisesArray = [];
 		
-
-		while((reResult = actionsRe.exec(body.text)) !== null) {
+		console.log('Parsed text:', bodyText);
+		while((reResult = actionsRe.exec(bodyText)) !== null) {
             let action = { type: reResult[0], teamid: body.channelData.teamsTeamId, caller: body.from };
 
 			if (reResult[2] != null) {
