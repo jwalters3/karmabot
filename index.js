@@ -95,7 +95,7 @@ exports.handler = (event, context, callback) => {
 function bangAction(action) {
     let emoticon = '';
 
-    switch(action.name) {
+    switch(action.key) {
         case 'list':
             return getScoreList(action);
         case 'flip':
@@ -105,7 +105,7 @@ function bangAction(action) {
             emoticon = '┬──┬ ノ( ゜-゜ノ)';
             break;
         case 'shrug':
-            emoticon = '¯\\_(ツ)_/¯';
+            emoticon = '¯\\\\_(ツ)_/¯';
             break;
         case 'disapprove':
             emoticon = 'ಠ_ಠ';
@@ -127,6 +127,8 @@ function getBangAction(action) {
 			//console.log("Getting user for inc:", data);
 			if (data.Item) {
                 return data.Item.value;
+            } else {
+                return "Action not found.";
             }
 		}).fail(error => {
 			console.error('Error getting bang action:', error);
