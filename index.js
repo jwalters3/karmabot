@@ -30,23 +30,23 @@ exports.handler = (event, context, callback) => {
 				let mention = body.entities.find(entity => { return entity.mentioned && entity.mentioned.name === name });
 				
 				if (mention) {
-                    action.type = op || action.type;
-                    action.userid = mention.mentioned.id;
-                    action.name = mention.mentioned.name;
+					action.type = op || action.type;
+					action.userid = mention.mentioned.id;
+					action.name = mention.mentioned.name;
 				}
 			} else if (action.type.startsWith('!set')) {
-                action.type = 'set';
-                action.key = reResult[4];
-                action.value = reResult[5];
-                if (!action.key || !action.value) {
-                    action.type = 'error'
-                }
-            } else if (action.type.startsWith('!')) {
-                action.type = '!';
-                action.key = reResult[3];
-            }
+				action.type = 'set';
+				action.key = reResult[4];
+				action.value = reResult[5];
+				if (!action.key || !action.value) {
+					action.type = 'error'
+				}
+			} else if (action.type.startsWith('!')) {
+				action.type = '!';
+				action.key = reResult[3];
+			}
 
-            actions.push(action);
+			actions.push(action);
 		}
 
 		//console.log("Submitted actions:", actions);
@@ -57,9 +57,9 @@ exports.handler = (event, context, callback) => {
 		}
 
 		actions.forEach(action => { 
-            logAction(action)
+			logAction(action)
 			switch (action.type) {
-                case "set":
+				case "set":
 					resultPromisesArray.push(setBangAction(action));
 					break;
 				case "!":
@@ -93,63 +93,63 @@ exports.handler = (event, context, callback) => {
 };
 
 function bangAction(action) {
-    let emoticon = '';
+	let emoticon = '';
 
-    switch(action.key) {
-        case 'list':
-            return getScoreList(action);
-        case 'flip':
-            emoticon = '(╯°Д°）╯︵ ┻━┻';
-            break;
-        case 'unflip':
-            emoticon = '┬──┬ ノ( ゜-゜ノ)';
-            break;
-        case 'shrug':
-            emoticon = '¯\\\\_(ツ)_/¯';
-            break;
-        case 'disapprove':
-            emoticon = 'ಠ_ಠ';
-            break;
-        default:
-            return getBangAction(action);
-    }
+	switch(action.key) {
+		case 'list':
+			return getScoreList(action);
+		case 'flip':
+			emoticon = '(╯°Д°）╯︵ ┻━┻';
+			break;
+		case 'unflip':
+			emoticon = '┬──┬ ノ( ゜-゜ノ)';
+			break;
+		case 'shrug':
+			emoticon = '¯\\\\_(ツ)_/¯';
+			break;
+		case 'disapprove':
+			emoticon = 'ಠ_ಠ';
+			break;
+		default:
+			return getBangAction(action);
+	}
 
-    return Q(emoticon);
+	return Q(emoticon);
 }
 
 function getBangAction(action) {
 	let params = {
 		TableName: 'BangActions',
-        Key: { "key": action.key, "teamid": action.teamid }
+		Key: { "key": action.key, "teamid": action.teamid }
 	};
 	return Q.ninvoke(dynamo, "getItem", params)
 		.then(data => {
 			//console.log("Getting user for inc:", data);
 			if (data.Item) {
-                return data.Item.value;
-            } else {
-                return "Action not found.";
-            }
+				return data.Item.value;
+			} else {
+				return "Action not found.";
+			}
 		}).fail(error => {
 			console.error('Error getting bang action:', error);
 		});
 }
 
 function setBangAction(action) {
-    let params = {
-        TableName: 'BangActions',
-        Item: {
-            "creator": action.caller.id,
-            "key": action.key,
-            "value": action.value,
-            "createtime": Date.now(),
-            "teamid": action.teamid
-        }
-    };
-    return Q.ninvoke(dynamo, "putItem", params)
-        .then(data => {
-            console.log("after put", data);
-            return '!' + action.key + " is now \"" + action.value + "\"."
+	let params = {
+		TableName: 'BangActions',
+		Item: {
+			"creator": action.caller.id,
+			"key": action.key,
+			"value": action.value,
+			"createtime": Date.now(),
+			"teamid": action.teamid
+		}
+	};
+	return Q.ninvoke(dynamo, "putItem", params)
+		.then(data => {
+			console.log("after put", data);
+			return '!' + action.key + " is now \"" + action.value + "\"."
 		}).fail(error => {
 			console.error('Error setting bang action:', error);
 		});
@@ -158,13 +158,13 @@ function setBangAction(action) {
 function getScoreList(action) {
 	let params = {
 		TableName: 'KarmaBot',
-        KeyConditionExpression: "#t = :tid",
-        ExpressionAttributeNames:{
-            "#t": "teamid"
-        },
-        ExpressionAttributeValues: {
-            ":tid":action.teamid
-        }
+		KeyConditionExpression: "#t = :tid",
+		ExpressionAttributeNames:{
+			"#t": "teamid"
+		},
+		ExpressionAttributeValues: {
+			":tid":action.teamid
+		}
 	}
 
     //console.log("scan params:",params)
@@ -172,21 +172,21 @@ function getScoreList(action) {
 	return Q.ninvoke(dynamo, "query", params)
 		.then(data => {
 			//console.log("scan data:",data)
-            let res = '';
+			let res = '';
 
-            if (data.Items.length) {
-                res += "<ol>";
+			if (data.Items.length) {
+				res += "<ol>";
 
-                // sorting by score
-                data.Items.sort((a, b) => b.score - a.score);
-              
-                res += data.Items.reduce((acc, user) => {
-                    return  acc += "<li>" + user.name + ": " + user.score + "</li>";
-                }, '');
+				// sorting by score
+				data.Items.sort((a, b) => b.score - a.score);
 
-                res += "</ol>";
+				res += data.Items.reduce((acc, user) => {
+					return  acc += "<li>" + user.name + ": " + user.score + "</li>";
+				}, '');
 
-            } else { res = "No one has karma :(" }
+				res += "</ol>";
+
+			} else { res = "No one has karma :(" }
 			//console.log("score list result:", res);
 			return res;
 		}).fail(error => {
@@ -197,7 +197,7 @@ function getScoreList(action) {
 function increment(action) {
 	let params = {
 		TableName: 'KarmaBot',
-        Key: { "userid": action.userid, "teamid": action.teamid }
+		Key: { "userid": action.userid, "teamid": action.teamid }
 	};
 
 	return Q.ninvoke(dynamo, "getItem", params)
@@ -212,7 +212,7 @@ function increment(action) {
 					ReturnValues: "ALL_NEW",
 					UpdateExpression: "SET #S = :s, #LS = :ls"
 				}
-				
+
 				//console.log("update params:", params);
 
 				return Q.ninvoke(dynamo, "updateItem", params)
@@ -222,7 +222,7 @@ function increment(action) {
 					});
 			} else {
 				let score = action.type === "++" ? 1 : -1;
-                let friendlyName = action.name.split(', ').reverse().join(' ');
+				let friendlyName = action.name.split(', ').reverse().join(' ');
 				let params = {
 					TableName: 'KarmaBot',
 					Item: {
@@ -230,7 +230,7 @@ function increment(action) {
 						"name": friendlyName,
 						"score": score,
 						"lastscore": Date.now(),
-                        "teamid": action.teamid
+						"teamid": action.teamid
 					}
 				};
 				return Q.ninvoke(dynamo, "putItem", params)
@@ -245,15 +245,15 @@ function increment(action) {
 }
 
 function logAction(action) {
-    let params = {
-        TableName: 'KarmaBotActions',
-        Item: {
-            'userid': action.caller.id,
-            'actiontime': Date.now(),
-            'action': JSON.stringify(action)
-        }
-    };
-    dynamo.putItem(params).send();
+	let params = {
+		TableName: 'KarmaBotActions',
+		Item: {
+			'userid': action.caller.id,
+			'actiontime': Date.now(),
+			'action': JSON.stringify(action)
+		}
+	};
+	dynamo.putItem(params).send();
 }
 
 function sendHelp(context, callback) {
@@ -271,7 +271,7 @@ function sendHelp(context, callback) {
 }
 
 function stringToUtf8ByteArray(str) {
-	 let out = [], p = 0;
+	let out = [], p = 0;
 
 	for (var i = 0; i < str.length; i++) {
 		let c = str.charCodeAt(i);
