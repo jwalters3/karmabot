@@ -22,7 +22,7 @@ exports.handler = (event, context, callback) => {
 		
 		console.log('Parsed text:', bodyText);
 		while((reResult = actionsRe.exec(bodyText)) !== null) {
-            let action = { type: reResult[0] || '', teamid: body.channelData.teamsTeamId, caller: body.from };
+			let action = { type: reResult[0] || '', teamid: body.channelData.teamsTeamId, caller: body.from };
 
 			if (action.type.startsWith('<at>')) {
 				let name = reResult[1];
