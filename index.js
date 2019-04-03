@@ -16,15 +16,15 @@ exports.handler = (event, context, callback) => {
 		
 		var body = JSON.parse(event.body),
 			bodyText = entities.decode(body.text),
-			actionsRe = /<at>([^<]+)<\/at> {0,2}([+-]{2})|\blist\b|!(:?un)?flip\b/g,
+			actionsRe = /<at>([^<]+)<\/at>\s{0,2}([+-]{2})|!(\w+)(?:\s+(\w+)="(.+?)")?/g,
 			actions = [], action, reResult,
 			resultPromisesArray = [];
 		
 		console.log('Parsed text:', bodyText);
 		while((reResult = actionsRe.exec(bodyText)) !== null) {
-            let action = { type: reResult[0], teamid: body.channelData.teamsTeamId, caller: body.from };
+            let action = { type: reResult[0] || '', teamid: body.channelData.teamsTeamId, caller: body.from };
 
-			if (reResult[2] != null) {
+			if (action.type.startsWith('<at>')) {
 				let name = reResult[1];
 				let op = reResult[2];
 				let mention = body.entities.find(entity => { return entity.mentioned && entity.mentioned.name === name });
@@ -34,7 +34,18 @@ exports.handler = (event, context, callback) => {
                     action.userid = mention.mentioned.id;
                     action.name = mention.mentioned.name;
 				}
-			}
+			} else if (action.type.startsWith('!set')) {
+                action.type = 'set';
+                action.key = reResult[4];
+                action.value = reResult[5];
+                if (!action.key || !action.value) {
+                    action.type = 'error'
+                }
+            } else if (action.type.startsWith('!')) {
+                action.type = '!';
+                action.key = reResult[3];
+            }
+
             actions.push(action);
 		}
 
@@ -48,14 +59,11 @@ exports.handler = (event, context, callback) => {
 		actions.forEach(action => { 
             logAction(action)
 			switch (action.type) {
-				case "list":
-					resultPromisesArray.push(getScoreList(action));
+                case "set":
+					resultPromisesArray.push(setBangAction(action));
 					break;
-				case "!flip":
-					resultPromisesArray.push(getEmoticon(action));
-					break;
-				case "!unflip":
-					resultPromisesArray.push(getEmoticon(action));
+				case "!":
+					resultPromisesArray.push(bangAction(action));
 					break;
 				case "++":
 					resultPromisesArray.push(increment(action));
@@ -84,19 +92,65 @@ exports.handler = (event, context, callback) => {
 
 };
 
-function getEmoticon(action) {
+function bangAction(action) {
     let emoticon = '';
 
-    switch(action.type) {
-        case '!flip':
+    switch(action.name) {
+        case 'list':
+            return getScoreList(action);
+        case 'flip':
             emoticon = '(╯°Д°）╯︵ ┻━┻';
             break;
-        case '!unflip':
+        case 'unflip':
             emoticon = '┬──┬ ノ( ゜-゜ノ)';
             break;
+        case 'shrug':
+            emoticon = '¯\\_(ツ)_/¯';
+            break;
+        case 'disapprove':
+            emoticon = 'ಠ_ಠ';
+            break;
+        default:
+            return getBangAction(action);
     }
 
     return Q(emoticon);
+}
+
+function getBangAction(action) {
+	let params = {
+		TableName: 'BangActions',
+        Key: { "key": action.key, "teamid": action.teamid }
+	};
+	return Q.ninvoke(dynamo, "getItem", params)
+		.then(data => {
+			//console.log("Getting user for inc:", data);
+			if (data.Item) {
+                return data.Item.value;
+            }
+		}).fail(error => {
+			console.error('Error getting bang action:', error);
+		});
+}
+
+function setBangAction(action) {
+    let params = {
+        TableName: 'BangActions',
+        Item: {
+            "creator": action.caller.id,
+            "key": action.key,
+            "value": action.value,
+            "createtime": Date.now(),
+            "teamid": action.teamid
+        }
+    };
+    return Q.ninvoke(dynamo, "putItem", params)
+        .then(data => {
+            console.log("after put", data);
+            return '!' + action.key + " is now \"" + action.value + "\"."
+		}).fail(error => {
+			console.error('Error setting bang action:', error);
+		});
 }
 
 function getScoreList(action) {
@@ -204,7 +258,7 @@ function sendHelp(context, callback) {
 	let response = ["You can use the following commands: ",
 					"<li>@user++ : to add a point to a user</li>",
 					"<li>@user-- : to remove a point from a user</li>",
-					"<li>list    : to list the current score board</li>"
+					"<li>!list    : to list the current score board</li>"
 				   ].join('');
 
 	callback(null, {
