@@ -98,7 +98,7 @@ function bangAction(action) {
 	switch(action.key) {
 		case 'list':
 			return getScoreList(action);
-		case 'actions':
+		case 'commands':
 			return listBangActions(action);
 		case 'set':
 			emoticon = 'Invalid !set syntax; !set action="value"';
@@ -145,7 +145,7 @@ function listBangActions(action) {
 				'<h3>Reserved commands:</h3>',
 				'<ul>',
 					'<li>!list</li>',
-					'<li>!actions</li>',
+					'<li>!commands</li>',
 					'<li>!set</li>',
 				'</ul>',
 				'<h3>Custom commands:</h3>'
@@ -296,7 +296,7 @@ function sendHelp(context, callback) {
 					"<li>@user++ : to add a point to a user</li>",
 					"<li>@user-- : to remove a point from a user</li>",
 					"<li>!list    : to list the current score board</li>",
-					"<li>!actions : to list all saved !actions</li>",
+					"<li>!commands : to list all saved !actions</li>",
 					"<li>!set {action}=\"{value}\" : to create or update an action</li>",
 				   ].join('');
 
