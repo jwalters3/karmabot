@@ -155,8 +155,18 @@ function listBangActions(action) {
 
 				res += "<ul>";
 
-				// sorting by score
-				data.Items.sort();
+                // sort by key ignore case
+				data.Items.sort((a, b) => {
+					let nameA = a.key.toUpperCase();
+					let nameB = b.key.toUpperCase();
+
+					if (nameA < nameB)
+						return -1;
+					if (nameA > nameB)
+						return 1;
+
+					return 0;
+				});
 				res += data.Items.reduce((acc, action) => {
 					return  acc += "<li>!" + action.key + "</li>";
 				}, '');
