@@ -144,8 +144,8 @@ function listBangActions(action) {
 			let res = [
 				'<h3>Reserved commands:</h3>',
 				'<ul>',
-					'<li>!list</li>',
 					'<li>!commands</li>',
+					'<li>!list</li>',
 					'<li>!set</li>',
 				'</ul>',
 				'<h3>Custom commands:</h3>'
