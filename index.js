@@ -17,7 +17,7 @@ exports.handler = (event, context, callback) => {
 		var body = JSON.parse(event.body),
 			bodyText = entities.decode(body.text),
 			actionsRe = /<at>([^<]+)<\/at>\s{0,2}([+-]{2})|!(\w+)(?:\s+(\w+)="(.+?)")?/g,
-			actions = [], action, reResult,
+			actions = [], reResult,
 			resultPromisesArray = [];
 		
 		console.log('Parsed text:', bodyText);
@@ -39,7 +39,7 @@ exports.handler = (event, context, callback) => {
 				action.key = reResult[4];
 				action.value = reResult[5];
 				if (!action.key || !action.value) {
-					action.type = 'error'
+					action.type = 'error';
 				}
 			} else if (action.type.startsWith('!')) {
 				action.type = '!';
@@ -57,7 +57,7 @@ exports.handler = (event, context, callback) => {
 		}
 
 		actions.forEach(action => { 
-			logAction(action)
+			logAction(action);
 			switch (action.type) {
 				case "set":
 					resultPromisesArray.push(setBangAction(action));
@@ -98,17 +98,10 @@ function bangAction(action) {
 	switch(action.key) {
 		case 'list':
 			return getScoreList(action);
-		case 'flip':
-			emoticon = '(╯°Д°）╯︵ ┻━┻';
-			break;
-		case 'unflip':
-			emoticon = '┬──┬ ノ( ゜-゜ノ)';
-			break;
-		case 'shrug':
-			emoticon = '¯\\\\_(ツ)_/¯';
-			break;
-		case 'disapprove':
-			emoticon = 'ಠ_ಠ';
+		case 'actions':
+			return listBangActions(action);
+		case 'set':
+			emoticon = 'Invalid !set syntax; !set action="value"';
 			break;
 		default:
 			return getBangAction(action);
@@ -134,6 +127,48 @@ function getBangAction(action) {
 			console.error('Error getting bang action:', error);
 		});
 }
+function listBangActions(action) {
+	let params = {
+		TableName: 'BangActions',
+		KeyConditionExpression: "#t = :tid",
+		ExpressionAttributeNames:{
+			"#t": "teamid"
+		},
+		ExpressionAttributeValues: {
+			":tid":action.teamid
+		}
+	};
+	return Q.ninvoke(dynamo, "query", params)
+		.then(data => {
+			//console.log("scan data:",data)
+			let res = [
+				'<h3>Reserved commands:</h3>',
+				'<ul>',
+					'<li>!list</li>',
+					'<li>!actions</li>',
+					'<li>!set</li>',
+				'</ul>',
+				'<h3>Custom commands:</h3>'
+			].join('');
+
+			if (data.Items.length) {
+
+				res += "<ul>";
+
+				// sorting by score
+				data.Items.sort();
+				res += data.Items.reduce((acc, action) => {
+					return  acc += "<li>!" + action.key + "</li>";
+				}, '');
+
+				res += "</ul>";
+			} else { res = "No custom commands :(" }
+			//console.log("score list result:", res);
+			return res;
+		}).fail(error => {
+			console.error('Error getting actions list:', error);
+		});
+}
 
 function setBangAction(action) {
 	let params = {
@@ -149,7 +184,7 @@ function setBangAction(action) {
 	return Q.ninvoke(dynamo, "putItem", params)
 		.then(data => {
 			console.log("after put", data);
-			return '!' + action.key + " is now \"" + action.value + "\"."
+			return '!' + action.key + " is now \"" + action.value + "\".";
 		}).fail(error => {
 			console.error('Error setting bang action:', error);
 		});
@@ -165,7 +200,7 @@ function getScoreList(action) {
 		ExpressionAttributeValues: {
 			":tid":action.teamid
 		}
-	}
+	};
 
     //console.log("scan params:",params)
 
@@ -211,14 +246,14 @@ function increment(action) {
 					ExpressionAttributeValues: { ":s": action.type === "++" ? data.Item.score + 1 : data.Item.score - 1 , ":ls": Date.now() },
 					ReturnValues: "ALL_NEW",
 					UpdateExpression: "SET #S = :s, #LS = :ls"
-				}
+				};
 
 				//console.log("update params:", params);
 
 				return Q.ninvoke(dynamo, "updateItem", params)
 					.then(data => {
 						//console.log("after update", data);
-						return "<at>" + data.Attributes.name + "</at> has " + data.Attributes.score + " karma."
+						return "<at>" + data.Attributes.name + "</at> has " + data.Attributes.score + " karma.";
 					});
 			} else {
 				let score = action.type === "++" ? 1 : -1;
@@ -236,7 +271,7 @@ function increment(action) {
 				return Q.ninvoke(dynamo, "putItem", params)
 					.then(data => {
 						console.log("after put", data);
-						return "<at>" + friendlyName + "</at> has " + score + " karma."
+						return "<at>" + friendlyName + "</at> has " + score + " karma.";
 					});
 			}
 		}).fail(error => {
@@ -260,7 +295,9 @@ function sendHelp(context, callback) {
 	let response = ["You can use the following commands: ",
 					"<li>@user++ : to add a point to a user</li>",
 					"<li>@user-- : to remove a point from a user</li>",
-					"<li>!list    : to list the current score board</li>"
+					"<li>!list    : to list the current score board</li>",
+					"<li>!actions : to list all saved !actions</li>",
+					"<li>!set {action}=\"{value}\" : to create or update an action</li>",
 				   ].join('');
 
 	callback(null, {
