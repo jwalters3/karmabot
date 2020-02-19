@@ -2,13 +2,13 @@
 
 console.log('Loading function');
 
-const doc = require('dynamodb-doc');
+const AWS = require('aws-sdk');
 const crypto = require('crypto');
 const Q = require('q');
 const Entities = require('html-entities').XmlEntities;
 
 const entities = new Entities();
-const dynamo = new doc.DynamoDB();
+const dynamo =  new AWS.DynamoDB.DocumentClient({apiVersion: '2012-08-10'});
 
 exports.handler = (event, context, callback) => {
 	//console.log('Received event:', JSON.stringify(event, null, 2));
@@ -16,7 +16,7 @@ exports.handler = (event, context, callback) => {
 		
 		var body = JSON.parse(event.body),
 			bodyText = entities.decode(body.text),
-			actionsRe = /<at>([^<]+)<\/at>\s{0,2}([+-]{2})|!(\w+)(?:\s+(\w+)="""(.+?)""")?/g,
+			actionsRe = /<at>([^<]+)<\/at>\s{0,2}([+-]{2})|!(\w+)(?:\s+(\w+)="""([\s\S]+?)""")?/g,
 			actions = [], reResult,
 			resultPromisesArray = [];
 		
@@ -115,7 +115,7 @@ function getBangAction(action) {
 		TableName: 'BangActions',
 		Key: { "key": action.key, "teamid": action.teamid }
 	};
-	return Q.ninvoke(dynamo, "getItem", params)
+	return Q.ninvoke(dynamo, "get", params)
 		.then(data => {
 			//console.log("Getting user for inc:", data);
 			if (data.Item) {
@@ -191,7 +191,7 @@ function setBangAction(action) {
 			"teamid": action.teamid
 		}
 	};
-	return Q.ninvoke(dynamo, "putItem", params)
+	return Q.ninvoke(dynamo, "put", params)
 		.then(data => {
 			console.log("after put", data);
 			return '!' + action.key + " is now \"" + action.value + "\".";
@@ -245,7 +245,7 @@ function increment(action) {
 		Key: { "userid": action.userid, "teamid": action.teamid }
 	};
 
-	return Q.ninvoke(dynamo, "getItem", params)
+	return Q.ninvoke(dynamo, "get", params)
 		.then(data => {
 			//console.log("Getting user for inc:", data);
 			if (data.Item) {
@@ -260,7 +260,7 @@ function increment(action) {
 
 				//console.log("update params:", params);
 
-				return Q.ninvoke(dynamo, "updateItem", params)
+				return Q.ninvoke(dynamo, "update", params)
 					.then(data => {
 						//console.log("after update", data);
 						return "<at>" + data.Attributes.name + "</at> has " + data.Attributes.score + " karma.";
@@ -278,7 +278,7 @@ function increment(action) {
 						"teamid": action.teamid
 					}
 				};
-				return Q.ninvoke(dynamo, "putItem", params)
+				return Q.ninvoke(dynamo, "put", params)
 					.then(data => {
 						console.log("after put", data);
 						return "<at>" + friendlyName + "</at> has " + score + " karma.";
@@ -298,7 +298,7 @@ function logAction(action) {
 			'action': JSON.stringify(action)
 		}
 	};
-	dynamo.putItem(params).send();
+	dynamo.put(params).send();
 }
 
 function sendHelp(context, callback) {
