@@ -373,8 +373,8 @@ function validate(request) {
 
 	signature = authHeader.substring(5);
 
-	const secret = new Buffer(process.env[claimedSenderId], 'base64');
-	const contentBytes = new Buffer(stringToUtf8ByteArray(messageContent));
+	const secret = Buffer.from(process.env[claimedSenderId], 'base64');
+	const contentBytes = Buffer.from(stringToUtf8ByteArray(messageContent));
 	const hmac = crypto.createHmac('SHA256', secret);
 
 	hmac.update(contentBytes);
