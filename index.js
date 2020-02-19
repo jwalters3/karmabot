@@ -16,7 +16,7 @@ exports.handler = (event, context, callback) => {
 		
 		var body = JSON.parse(event.body),
 			bodyText = entities.decode(body.text),
-			actionsRe = /<at>([^<]+)<\/at>\s{0,2}([+-]{2})|!(\w+)(?:\s+(\w+)=\("(.+?)"\))?/g,
+			actionsRe = /<at>([^<]+)<\/at>\s{0,2}([+-]{2})|!(\w+)(?:\s+(\w+)="""(.+?)""")?/g,
 			actions = [], reResult,
 			resultPromisesArray = [];
 		
@@ -101,7 +101,7 @@ function bangAction(action) {
 		case 'commands':
 			return listBangActions(action);
 		case 'set':
-			emoticon = 'Invalid !set syntax; !set action="value"';
+			emoticon = 'Invalid !set syntax; !set action="""value"""';
 			break;
 		default:
 			return getBangAction(action);
@@ -307,7 +307,7 @@ function sendHelp(context, callback) {
 					"<li>@user-- : to remove a point from a user</li>",
 					"<li>!list    : to list the current score board</li>",
 					"<li>!commands : to list all saved !actions</li>",
-					"<li>!set {action}=(\"{value}\") : to create or update an action</li>",
+					"<li>!set {action}=\"\"\"{value}\"\"\" : to create or update an action</li>",
 				   ].join('');
 
 	callback(null, {
